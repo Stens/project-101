@@ -3,6 +3,7 @@ package no.acntech.project101.company.service;
 import java.util.List;
 import java.util.Optional;
 
+import no.acntech.project101.employee.Employee;
 import org.springframework.stereotype.Service;
 
 import no.acntech.project101.company.Company;
@@ -44,5 +45,9 @@ public class CompanyService {
         if (companyRepository.existsById(id)) {
             companyRepository.deleteById(id);
         }
+    }
+
+    public Company getCompanyOfEmployee(Employee employee) {
+        return companyRepository.findAllByCompanyEmployees(employee);
     }
 }

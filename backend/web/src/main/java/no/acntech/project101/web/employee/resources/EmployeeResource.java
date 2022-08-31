@@ -3,8 +3,13 @@ package no.acntech.project101.web.employee.resources;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 
+import no.acntech.project101.employee.Employee;
 import no.acntech.project101.employee.service.EmployeeService;
+import no.acntech.project101.web.employee.resources.converter.EmployeeConverter;
+import no.acntech.project101.web.employee.resources.converter.EmployeeDtoConverter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -15,39 +20,35 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 @RequestMapping("employees")
 public class EmployeeResource {
+    private final EmployeeService employeeService;
+    private final EmployeeDtoConverter employeDtoConverter;
+    private final EmployeeConverter employeeConverter;
 
-    //TODO The constructor needs to accept the required dependencies and assign them to class variables
 
-    private ArrayList<EmployeeDto> employees= new ArrayList<EmployeeDto>();
-
-    public EmployeeResource() {
-        LocalDate localDate = LocalDate.of(1996,6,23);
-
-        this.employees.add(
-                new EmployeeDto(1L, "Kris", "Ste", localDate, 1L)
-        );
-        this.employees.add(
-                new EmployeeDto(2L, "Stian", "Ste", localDate, 1L)
-        );
+    public EmployeeResource(EmployeeService employeeService, EmployeeConverter employeeConverter, EmployeeDtoConverter employeeDtoConverter) {
+        this.employeeService = employeeService;
+        this.employeDtoConverter = employeeDtoConverter;
+        this.employeeConverter = employeeConverter;
     }
     @GetMapping
     public ResponseEntity<List<EmployeeDto>> findAll() {
-        return ResponseEntity.ok(this.employees);
+
+        //return ResponseEntity.ok();
+        Stream<EmployeeDto> employeeDtoStream = this.employeeService.findAll().stream().map(this.employeDtoConverter::convert);
+        return  ResponseEntity.ok(employeeDtoStream.toList());
     }
 
     @GetMapping("{id}")
     public ResponseEntity<EmployeeDto> findById(@PathVariable final Long id) {
-         final var employee = this.employees.stream().filter(employeeDto ->
-                 employeeDto.id().equals(id)).findFirst().orElse(null);
-         System.out.println(employee);
-         return ResponseEntity.ok(employee);
+        Optional<Employee> byId = this.employeeService.findById(id);
+        return byId.map(employee -> ResponseEntity.ok(this.employeDtoConverter.convert(employee))).orElseGet(() -> ResponseEntity.notFound().build());
     }
     @PostMapping
     public ResponseEntity createEmployee(@RequestBody @Validated final EmployeeDto employeeDto) {
-        this.employees.add(employeeDto);
+        Employee save = this.employeeService.save(this.employeeConverter.convert(employeeDto));
         final var uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(employeeDto.id())
+                .buildAndExpand(save.getId())
                 .toUri();
 
         return ResponseEntity.created(uri).build();
@@ -55,28 +56,36 @@ public class EmployeeResource {
 
     @DeleteMapping("{id}")
     public ResponseEntity deleteEmployee(@PathVariable final Long id) {
-        final var employeeToDelete = this.employees.stream().filter(employeeDto -> employeeDto.id().equals(id)).findFirst().orElse(null);
-        if(employeeToDelete == null) {
-            return ResponseEntity.notFound().build();
+
+        Optional<Employee> byId = this.employeeService.findById(id);
+        if (byId.isPresent()) {
+            this.employeeService.delete(id);
+            return ResponseEntity.accepted().build();
         }else {
 
-
-            this.employees.remove(employeeToDelete);
-            return ResponseEntity.accepted().build();
+            return ResponseEntity.notFound().build();
         }
     }
 
     @PatchMapping("{id}")
     public ResponseEntity updateEmployee(@RequestBody @Validated EmployeeDto newEmployeeDto) {
-        final var employeeToUpdate = this.employees.stream().filter(ed -> ed.companyId().equals(newEmployeeDto.companyId())).findFirst().orElse(null);
-        if(employeeToUpdate == null) {
-            return ResponseEntity.notFound().build();
+        Optional<Employee> byId = this.employeeService.findById(newEmployeeDto.id());
+        if(byId.isPresent()) {
+            final var byIdfinal = byId.get();
+            byIdfinal.setCompanyId(newEmployeeDto.companyId());
+            byIdfinal.setDateOfBirth(newEmployeeDto.dateOfBirth());
+            byIdfinal.setFirstName(newEmployeeDto.firstName());
+            byIdfinal.setLastName(newEmployeeDto.lastName());
+            this.employeeService.save(byIdfinal);
+            return ResponseEntity.ok(this.employeDtoConverter.convert(byIdfinal));
         }else {
-
-            this.employees.remove(employeeToUpdate);
-            final var i = this.employees.indexOf(employeeToUpdate);
-            this.employees.add(newEmployeeDto);
-            return ResponseEntity.ok(newEmployeeDto);
+            return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/all-employees/{companyId}")
+    public ResponseEntity<List<EmployeeDto>> findEmployeesByCompany(@PathVariable Long id) {
+        Stream<EmployeeDto> employeeDtoStream = this.employeeService.getEmployeesByCompanyId(id).stream().map(this.employeDtoConverter::convert);
+        return ResponseEntity.ok(employeeDtoStream.toList());
     }
 }

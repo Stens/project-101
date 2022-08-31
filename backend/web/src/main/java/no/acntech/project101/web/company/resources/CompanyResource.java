@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import no.acntech.project101.employee.Employee;
+import no.acntech.project101.web.employee.resources.EmployeeDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -113,5 +115,11 @@ public class CompanyResource {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+    @GetMapping("/findCompany")
+    public ResponseEntity<CompanyDto> getCompanyFromEmployee(@RequestBody Employee employee ) {
+        Company companyOfEmployee = this.companyService.getCompanyOfEmployee(employee);
+        return ResponseEntity.ok(this.companyDtoConverter.convert(companyOfEmployee));
+
     }
 }

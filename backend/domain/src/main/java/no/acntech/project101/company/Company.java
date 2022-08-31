@@ -1,10 +1,9 @@
 package no.acntech.project101.company;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import no.acntech.project101.employee.Employee;
+
+import java.util.List;
 
 @Entity
 public class Company {
@@ -18,6 +17,9 @@ public class Company {
 
     @Column(name = "ORG_NR")
     private String orgNr;
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    List<Employee> companyEmployees;
 
 
     //TODO add mapping for list of employees if you have time
